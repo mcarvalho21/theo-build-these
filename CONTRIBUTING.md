@@ -45,3 +45,5 @@ Do not add real malware, credential-stealing samples, or live secrets to tests o
 ## Style
 
 Prefer dependency-light Node.js modules, readable tests using `node:test`, deterministic output, and clear JSON shapes that coding agents can consume.
+
+These prototypes use a Theo-inspired engineering style: small working primitives, fast feedback, visible risk, strong defaults, low ceremony, and the occasional useful bit of fun. See [`docs/theo-inspired-engineering.md`](docs/theo-inspired-engineering.md).
