@@ -1,6 +1,8 @@
 # @build-these/mobile-lab
 
-Prototype for “new mobile platform with Android compatibility.” This is not a ROM; it is the planning/control-plane slice: device suitability, app compatibility classes, and a flash/distribution checklist.
+[![CI](https://github.com/mcarvalho21/theo-build-these/actions/workflows/ci.yml/badge.svg)](https://github.com/mcarvalho21/theo-build-these/actions/workflows/ci.yml)
+
+Prototype for exploring a new Android-compatible mobile platform: model devices, apps, compatibility blockers, and a rollout plan.
 
 ```bash
 mobile-lab examples/device-apps.json

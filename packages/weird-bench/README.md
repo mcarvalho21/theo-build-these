@@ -1,6 +1,8 @@
 # @build-these/weird-bench
 
-Tiny proof-of-concept for Theo's "go build weird benchmarks" idea.
+[![CI](https://github.com/mcarvalho21/theo-build-these/actions/workflows/ci.yml/badge.svg)](https://github.com/mcarvalho21/theo-build-these/actions/workflows/ci.yml)
+
+Prototype for turning failed/interesting coding-agent tasks into reproducible benchmark fixtures.
 
 A benchmark fixture is just:
 

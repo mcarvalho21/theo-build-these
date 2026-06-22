@@ -1,5 +1,7 @@
 # Theo Build These — working prototypes
 
+[![CI](https://github.com/mcarvalho21/theo-build-these/actions/workflows/ci.yml/badge.svg)](https://github.com/mcarvalho21/theo-build-these/actions/workflows/ci.yml)
+
 A local prototype workspace for ideas from Theo's video, starting with small but executable MVPs for every idea in the backlog.
 
 ```bash
@@ -19,4 +21,4 @@ npm run demo:all
 | Agent-native Slack replacement | `@build-these/agent-workspace` | ✅ MVP | Post-first workspace core with nested replies and agent task branches |
 | Weird benchmarks | `@build-these/weird-bench` | ✅ MVP | Turn failed agent tasks into reproducible benchmark fixtures |
 
-See [`docs/ideas.md`](docs/ideas.md) for the extracted backlog and product notes.
+See [`docs/ideas.md`](docs/ideas.md) for the extracted backlog and product notes, [`docs/roadmap.md`](docs/roadmap.md) for collaboration priorities, and [`CONTRIBUTING.md`](CONTRIBUTING.md) for contribution guidelines.

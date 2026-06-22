@@ -1,5 +1,7 @@
 # @build-these/safe-npx
 
+[![CI](https://github.com/mcarvalho21/theo-build-these/actions/workflows/ci.yml/badge.svg)](https://github.com/mcarvalho21/theo-build-these/actions/workflows/ci.yml)
+
 `safe-npx` is a proof-of-concept safer `npx` wrapper for humans and coding agents.
 
 It does **not** claim to prove a package is safe. It makes the install/execute decision less blind by showing useful registry metadata and tarball content signals before code runs.

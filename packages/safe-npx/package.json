@@ -9,6 +9,19 @@
   "scripts": {
     "test": "node --test"
   },
+  "files": [
+    "bin/",
+    "src/"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mcarvalho21/theo-build-these.git",
+    "directory": "packages/safe-npx"
+  },
+  "bugs": {
+    "url": "https://github.com/mcarvalho21/theo-build-these/issues"
+  },
+  "homepage": "https://github.com/mcarvalho21/theo-build-these/tree/main/packages/safe-npx#readme",
   "engines": {
     "node": ">=20"
   },

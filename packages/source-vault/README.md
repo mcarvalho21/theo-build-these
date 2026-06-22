@@ -1,5 +1,7 @@
 # @build-these/source-vault
 
+[![CI](https://github.com/mcarvalho21/theo-build-these/actions/workflows/ci.yml/badge.svg)](https://github.com/mcarvalho21/theo-build-these/actions/workflows/ci.yml)
+
 Prototype for “source control beyond Git”: keep one repo-shaped workspace while declaring private paths that are encrypted in the shareable manifest.
 
 ```bash

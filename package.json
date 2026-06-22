@@ -7,6 +7,8 @@
     "packages/*"
   ],
   "scripts": {
+    "check": "npm test && npm run pack:check",
+    "pack:check": "npm pack --workspaces --dry-run",
     "test": "npm --workspaces test",
     "demo:safe-npx": "node packages/safe-npx/bin/safe-npx.js is-odd --dry-run",
     "demo:weird-bench": "node packages/weird-bench/bin/weird-bench.js packages/weird-bench/fixtures/reverse-string -- node -e \"process.stdin.resume(); process.stdin.on('end', () => console.log('.reggib sdliub xileF'))\"",
@@ -16,5 +18,13 @@
     "demo:agent-workspace": "node packages/agent-workspace/bin/agent-workspace.js \"Felix Workbench\"",
     "demo:all": "npm run demo:safe-npx && npm run demo:source-vault && npm run demo:dev-sync && npm run demo:mobile-lab && npm run demo:agent-workspace && npm run demo:weird-bench"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mcarvalho21/theo-build-these.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mcarvalho21/theo-build-these/issues"
+  },
+  "homepage": "https://github.com/mcarvalho21/theo-build-these#readme",
   "license": "MIT"
 }

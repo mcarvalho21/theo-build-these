@@ -1,6 +1,8 @@
 # @build-these/agent-workspace
 
-Prototype for an agent-native Slack replacement: a post-first workspace where active posts bump, replies can nest, and agents branch tasks as durable context.
+[![CI](https://github.com/mcarvalho21/theo-build-these/actions/workflows/ci.yml/badge.svg)](https://github.com/mcarvalho21/theo-build-these/actions/workflows/ci.yml)
+
+Prototype for a post-first, agent-native workspace: messages are durable objects with nested replies and branchable agent tasks.
 
 ```bash
 agent-workspace "Felix Workbench"

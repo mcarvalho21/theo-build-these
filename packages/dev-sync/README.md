@@ -1,6 +1,8 @@
 # @build-these/dev-sync
 
-Prototype for “Dropbox for devs”: sync project structure first, then lazily hydrate file contents when touched.
+[![CI](https://github.com/mcarvalho21/theo-build-these/actions/workflows/ci.yml/badge.svg)](https://github.com/mcarvalho21/theo-build-these/actions/workflows/ci.yml)
+
+Prototype for “Dropbox for dev machines”: sync repo structure first, then hydrate heavy files lazily from a remote manifest.
 
 ```bash
 dev-sync ~/Code > manifest.json

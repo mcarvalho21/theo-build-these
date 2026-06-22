@@ -5,6 +5,14 @@
   "type": "module",
   "bin": { "mobile-lab": "./bin/mobile-lab.js" },
   "scripts": { "test": "node --test" },
+  "files": ["bin/", "src/"],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mcarvalho21/theo-build-these.git",
+    "directory": "packages/mobile-lab"
+  },
+  "bugs": { "url": "https://github.com/mcarvalho21/theo-build-these/issues" },
+  "homepage": "https://github.com/mcarvalho21/theo-build-these/tree/main/packages/mobile-lab#readme",
   "engines": { "node": ">=20" },
   "license": "MIT"
 }
