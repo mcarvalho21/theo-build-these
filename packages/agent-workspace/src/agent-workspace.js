@@ -2,6 +2,52 @@ export function createWorkspace(now = () => new Date().toISOString()) {
   return { groups: {}, posts: {}, replies: {}, now };
 }
 
+export function exportWorkspace(ws) {
+  return JSON.stringify(snapshotWorkspace(ws), null, 2);
+}
+
+export function importWorkspace(json, now = () => new Date().toISOString()) {
+  const data = typeof json === 'string' ? JSON.parse(json) : json;
+  const workspace = createWorkspace(now);
+  workspace.groups = data.groups || {};
+  workspace.posts = data.posts || {};
+  workspace.replies = data.replies || {};
+  validateWorkspace(workspace);
+  return workspace;
+}
+
+export function snapshotWorkspace(ws) {
+  return {
+    groups: ws.groups || {},
+    posts: ws.posts || {},
+    replies: ws.replies || {}
+  };
+}
+
+export function validateWorkspace(ws) {
+  const errors = [];
+  for (const group of Object.values(ws.groups || {})) {
+    for (const postId of group.postIds || []) {
+      if (!ws.posts?.[postId]) errors.push(`group ${group.id} references missing post ${postId}`);
+    }
+  }
+  for (const post of Object.values(ws.posts || {})) {
+    if (!ws.groups?.[post.groupId]) errors.push(`post ${post.id} references missing group ${post.groupId}`);
+    for (const replyId of post.replyIds || []) {
+      if (!ws.replies?.[replyId]) errors.push(`post ${post.id} references missing reply ${replyId}`);
+    }
+  }
+  for (const replyItem of Object.values(ws.replies || {})) {
+    if (!ws.posts?.[replyItem.postId]) errors.push(`reply ${replyItem.id} references missing post ${replyItem.postId}`);
+    if (replyItem.parentReplyId && !ws.replies?.[replyItem.parentReplyId]) errors.push(`reply ${replyItem.id} references missing parent ${replyItem.parentReplyId}`);
+    for (const childId of replyItem.childReplyIds || []) {
+      if (!ws.replies?.[childId]) errors.push(`reply ${replyItem.id} references missing child ${childId}`);
+    }
+  }
+  if (errors.length) throw new Error(`Invalid workspace: ${errors.join('; ')}`);
+  return true;
+}
+
 export function createGroup(ws, name) {
   const id = slug(name);
   ws.groups[id] = ws.groups[id] || { id, name, postIds: [] };

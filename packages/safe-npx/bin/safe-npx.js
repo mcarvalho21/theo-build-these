@@ -5,12 +5,14 @@ import { stdin as input, stdout as output } from 'node:process';
 import {
   buildReport,
   fetchPackageMetadata,
+  fetchTarballBytes,
   parseArgs,
   parsePackageSpec,
   renderReport,
   renderPolicyDecision,
   evaluatePolicy,
-  resolveVersion
+  resolveVersion,
+  scanTarballBytes
 } from '../src/safe-npx.js';
 
 async function main() {
@@ -18,7 +20,9 @@ async function main() {
   const { name, range } = parsePackageSpec(opts.packageSpec);
   const metadata = await fetchPackageMetadata(name, opts.registry);
   const version = resolveVersion(metadata, range);
-  const report = buildReport(metadata, version, range);
+  const pkg = metadata.versions?.[version];
+  const tarballScan = pkg?.dist?.tarball ? await scanTarballBytes(await fetchTarballBytes(pkg.dist.tarball)) : null;
+  const report = buildReport(metadata, version, range, { tarballScan });
   const policy = opts.policyPath ? JSON.parse(await (await import('node:fs/promises')).readFile(opts.policyPath, 'utf8')) : {};
   if (opts.maxRisk) policy.maxRisk = opts.maxRisk;
   const decision = evaluatePolicy(report, policy);

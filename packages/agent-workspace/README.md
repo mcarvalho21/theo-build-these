@@ -4,6 +4,11 @@ Prototype for an agent-native Slack replacement: a post-first workspace where ac
 
 ```bash
 agent-workspace "Felix Workbench"
+agent-workspace "Felix Workbench" --export-workspace
 ```
 
-This MVP is intentionally headless. Next steps: persistence, HTTP API, Telegram/Discord bridges, per-post agent sessions, and a web UI.
+## JSON persistence
+
+The core exposes `exportWorkspace(ws)` and `importWorkspace(json, now)` for durable snapshots. The exported JSON intentionally omits the live clock function while preserving groups, posts, replies, timestamps, and references. Imports validate broken post/reply references before returning a usable workspace.
+
+This MVP is intentionally headless. Next steps: HTTP API, Telegram/Discord bridges, per-post agent sessions, and a web UI.

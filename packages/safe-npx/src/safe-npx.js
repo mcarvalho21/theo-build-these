@@ -50,6 +50,12 @@ export async function fetchPackageMetadata(name, registry = 'https://registry.np
   return res.json();
 }
 
+export async function fetchTarballBytes(tarballUrl) {
+  const res = await fetch(tarballUrl, { headers: { accept: 'application/octet-stream' } });
+  if (!res.ok) throw new Error(`npm tarball returned ${res.status} for ${tarballUrl}`);
+  return Buffer.from(await res.arrayBuffer());
+}
+
 export function resolveVersion(metadata, range = 'latest') {
   if (metadata.versions?.[range]) return range;
   const tagged = metadata['dist-tags']?.[range];
@@ -70,7 +76,7 @@ export function normalizeBin(bin) {
   return Object.entries(bin).map(([name, path]) => ({ name, path }));
 }
 
-export function scorePackage({ metadata, pkg }) {
+export function scorePackage({ metadata, pkg, tarballScan = null }) {
   let score = 0;
   const reasons = [];
   const scripts = lifecycleScripts(pkg);
@@ -111,19 +117,40 @@ export function scorePackage({ metadata, pkg }) {
     reasons.push(`large unpacked size: ${formatBytes(tarballBytes)}`);
   }
 
+  if (tarballScan?.suspiciousFiles?.length) {
+    const suspiciousFiles = tarballScan.suspiciousFiles;
+    const hiddenCount = suspiciousFiles.filter(file => file.reason === 'hidden file').length;
+    const largeJsCount = suspiciousFiles.filter(file => file.reason === 'large JavaScript file').length;
+    const minifiedJsCount = suspiciousFiles.filter(file => file.reason === 'minified JavaScript file').length;
+
+    if (hiddenCount) {
+      score += Math.min(20, hiddenCount * 5);
+      reasons.push(`tarball contains hidden files: ${hiddenCount}`);
+    }
+    if (largeJsCount) {
+      score += Math.min(25, largeJsCount * 10);
+      reasons.push(`tarball contains large JavaScript files: ${largeJsCount}`);
+    }
+    if (minifiedJsCount) {
+      score += Math.min(20, minifiedJsCount * 8);
+      reasons.push(`tarball contains minified JavaScript files: ${minifiedJsCount}`);
+    }
+  }
+
   const level = score >= 60 ? 'high' : score >= 30 ? 'medium' : 'low';
   if (!reasons.length) reasons.push('no obvious static risk flags in registry metadata');
   return { score: Math.min(score, 100), level, reasons };
 }
 
-export function buildReport(metadata, version, requestedRange = version) {
+export function buildReport(metadata, version, requestedRange = version, options = {}) {
   const pkg = metadata.versions?.[version];
   if (!pkg) throw new Error(`Version ${version} not found for ${metadata.name}`);
   const scripts = lifecycleScripts(pkg);
   const bins = normalizeBin(pkg.bin);
   const dependencies = Object.keys(pkg.dependencies || {});
   const maintainers = (metadata.maintainers || []).map(m => m.name || m.email || String(m)).filter(Boolean);
-  const risk = scorePackage({ metadata, pkg });
+  const tarballScan = options.tarballScan || null;
+  const risk = scorePackage({ metadata, pkg, tarballScan });
 
   return {
     package: pkg.name || metadata.name,
@@ -140,8 +167,92 @@ export function buildReport(metadata, version, requestedRange = version) {
     bins,
     lifecycleScripts: scripts,
     dependencyCount: dependencies.length,
+    tarballScan,
     risk
   };
+}
+
+function readTarString(buffer, start, length) {
+  const end = buffer.indexOf(0, start);
+  return buffer.subarray(start, end === -1 || end > start + length ? start + length : end).toString('utf8').trim();
+}
+
+function readTarOctal(buffer, start, length) {
+  const raw = readTarString(buffer, start, length).replace(/\0.*$/, '').trim();
+  return raw ? Number.parseInt(raw, 8) : 0;
+}
+
+function isEmptyTarBlock(buffer, offset) {
+  for (let index = offset; index < offset + 512 && index < buffer.length; index++) {
+    if (buffer[index] !== 0) return false;
+  }
+  return true;
+}
+
+function normalizeTarPath(name) {
+  return name.replace(/^\.\//, '').replace(/^package\//, '');
+}
+
+export async function listTarballEntries(tarballBytes) {
+  const { gunzipSync } = await import('node:zlib');
+  const tarBytes = gunzipSync(tarballBytes);
+  const entries = [];
+
+  for (let offset = 0; offset + 512 <= tarBytes.length;) {
+    if (isEmptyTarBlock(tarBytes, offset)) break;
+
+    const name = readTarString(tarBytes, offset, 100);
+    const size = readTarOctal(tarBytes, offset + 124, 12);
+    const type = readTarString(tarBytes, offset + 156, 1) || '0';
+    const prefix = readTarString(tarBytes, offset + 345, 155);
+    const path = normalizeTarPath(prefix ? `${prefix}/${name}` : name);
+    const contentOffset = offset + 512;
+
+    if (path && (type === '0' || type === '\0')) {
+      entries.push({ path, size, content: tarBytes.subarray(contentOffset, contentOffset + size) });
+    }
+
+    offset = contentOffset + Math.ceil(size / 512) * 512;
+  }
+
+  return entries;
+}
+
+function isHiddenPath(path) {
+  return path.split('/').some(part => part.startsWith('.') && part !== '.' && part !== '..');
+}
+
+function looksMinifiedJavaScript(entry) {
+  if (!/\.(?:m?js|cjs)$/i.test(entry.path)) return false;
+  if (/\.min\.(?:m?js|cjs)$/i.test(entry.path)) return true;
+  if (entry.size < 50_000 || entry.size > 2_000_000) return false;
+
+  const text = entry.content.toString('utf8');
+  const newlineCount = (text.match(/\n/g) || []).length;
+  return newlineCount <= 2 || entry.size / Math.max(newlineCount, 1) > 2_000;
+}
+
+export function analyzeTarballEntries(entries) {
+  const suspiciousFiles = [];
+  for (const entry of entries) {
+    if (isHiddenPath(entry.path)) suspiciousFiles.push({ path: entry.path, size: entry.size, reason: 'hidden file' });
+    if (/\.(?:m?js|cjs)$/i.test(entry.path) && entry.size > 1_000_000) {
+      suspiciousFiles.push({ path: entry.path, size: entry.size, reason: 'large JavaScript file' });
+    } else if (looksMinifiedJavaScript(entry)) {
+      suspiciousFiles.push({ path: entry.path, size: entry.size, reason: 'minified JavaScript file' });
+    }
+  }
+
+  return {
+    fileCount: entries.length,
+    unpackedSize: entries.reduce((total, entry) => total + entry.size, 0),
+    suspiciousFiles
+  };
+}
+
+export async function scanTarballBytes(tarballBytes) {
+  const entries = await listTarballEntries(tarballBytes);
+  return analyzeTarballEntries(entries);
 }
 
 export function formatBytes(bytes) {
@@ -208,6 +319,17 @@ export function renderReport(report) {
   lines.push(`dependencies: ${report.dependencyCount}`);
   lines.push(`bins: ${report.bins.length ? report.bins.map(b => b.name ? `${b.name} -> ${b.path}` : b.path).join(', ') : 'none'}`);
   lines.push(`lifecycle scripts: ${Object.keys(report.lifecycleScripts).length ? Object.keys(report.lifecycleScripts).join(', ') : 'none'}`);
+  if (report.tarballScan) {
+    lines.push(`tarball scan: ${report.tarballScan.fileCount} files, ${formatBytes(report.tarballScan.unpackedSize)} unpacked`);
+    if (report.tarballScan.suspiciousFiles.length) {
+      for (const file of report.tarballScan.suspiciousFiles.slice(0, 10)) {
+        lines.push(`  - ${file.reason}: ${file.path} (${formatBytes(file.size)})`);
+      }
+      if (report.tarballScan.suspiciousFiles.length > 10) {
+        lines.push(`  - ...and ${report.tarballScan.suspiciousFiles.length - 10} more suspicious files`);
+      }
+    }
+  }
   if (report.tarball) lines.push(`tarball: ${report.tarball}`);
   return lines.join('\n');
 }

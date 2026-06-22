@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadFixture, runFixture, scoreOutput } from '../src/weird-bench.js';
+import { loadFixture, resultToJsonlLine, runFixture, scoreOutput, summarizeResults, summaryToJsonlLine } from '../src/weird-bench.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const fixtureDir = path.join(__dirname, '..', 'fixtures', 'reverse-string');
@@ -25,4 +25,15 @@ test('runFixture returns a benchmark result', async () => {
   assert.equal(result.name, 'reverse-string-smoke');
   assert.equal(result.pass, true);
   assert.equal(result.score, 1);
+});
+
+test('JSONL helpers emit compact result lines and aggregate summaries', () => {
+  const results = [
+    { name: 'a', pass: true, score: 1, mode: 'exact-trimmed', output: 'large output omitted' },
+    { name: 'b', pass: false, score: 0, mode: 'contains-all', notes: ['missing: x'] }
+  ];
+
+  assert.deepEqual(summarizeResults(results), { total: 2, passed: 1, failed: 1, score: 0.5 });
+  assert.equal(resultToJsonlLine(results[0]), '{"name":"a","pass":true,"score":1,"mode":"exact-trimmed","notes":[]}');
+  assert.equal(summaryToJsonlLine(results), '{"type":"summary","total":2,"passed":1,"failed":1,"score":0.5}');
 });

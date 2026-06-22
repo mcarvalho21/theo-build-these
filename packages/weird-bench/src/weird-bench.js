@@ -35,3 +35,24 @@ export async function runFixture(dir, command) {
   const result = scoreOutput(output, fixture);
   return { name: fixture.manifest.name || path.basename(dir), ...result, output };
 }
+
+export function summarizeResults(results) {
+  const total = results.length;
+  const passed = results.filter(result => result.pass).length;
+  const score = total === 0 ? 0 : results.reduce((sum, result) => sum + Number(result.score || 0), 0) / total;
+  return { total, passed, failed: total - passed, score };
+}
+
+export function resultToJsonlLine(result) {
+  return JSON.stringify({
+    name: result.name,
+    pass: Boolean(result.pass),
+    score: Number(result.score || 0),
+    mode: result.mode,
+    notes: result.notes || []
+  });
+}
+
+export function summaryToJsonlLine(results) {
+  return JSON.stringify({ type: 'summary', ...summarizeResults(results) });
+}

@@ -2,7 +2,7 @@
 
 `safe-npx` is a proof-of-concept safer `npx` wrapper for humans and coding agents.
 
-It does **not** claim to prove a package is safe. It makes the install/execute decision less blind by showing useful registry metadata before code runs.
+It does **not** claim to prove a package is safe. It makes the install/execute decision less blind by showing useful registry metadata and tarball content signals before code runs.
 
 ## Usage
 
@@ -23,6 +23,10 @@ Without `--dry-run`, it asks for an explicit package-name confirmation before ex
 - deprecated package/version
 - digit-containing package names as a light typo-squat prompt
 - large unpacked package size
+- tarball static scan, downloaded without executing package code:
+  - hidden files such as `.npmrc`, `.env`, or nested dotfiles
+  - large JavaScript files over 1 MB
+  - minified JavaScript by filename or simple one-line/dense-content heuristic
 
 ## Agent integration
 
@@ -33,15 +37,26 @@ Use `--json --dry-run` and have the agent inspect:
   "risk": { "score": 35, "level": "medium", "reasons": [] },
   "lifecycleScripts": {},
   "bins": [],
-  "integrity": "sha512-..."
+  "integrity": "sha512-...",
+  "tarballScan": {
+    "fileCount": 3,
+    "unpackedSize": 51234,
+    "suspiciousFiles": [
+      { "path": ".npmrc", "size": 21, "reason": "hidden file" },
+      { "path": "dist/tool.min.js", "size": 50023, "reason": "minified JavaScript file" }
+    ]
+  }
 }
 ```
 
 A future Hermes/agent policy could block `risk.level === "high"`, ask the user on `medium`, and allow `low` only for pinned versions.
 
+## Tarball scan
+
+`safe-npx` downloads the resolved package tarball and parses its file table/content locally before invoking `npx`. The scan does not run package code; it only decompresses the `.tgz`, lists regular files, totals unpacked size, and records suspicious file findings. These findings are included in human output, JSON output, and risk scoring so agent policies can block or escalate before execution.
+
 ## Next MVP steps
 
-- download tarball without executing and scan contents for obfuscation/minified blobs
 - compare latest release diff against prior version
 - flag newly added install scripts
 - query Socket/OpenSSF/package provenance APIs when available

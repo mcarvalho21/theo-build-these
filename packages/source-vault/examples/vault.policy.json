@@ -1,5 +1,19 @@
 {
-  "private": [".env*", "secrets/**"],
+  "id": "demo-vault-policy",
+  "private": [
+    { "glob": ".env*", "recipients": ["ops"], "label": "runtime-env" },
+    { "glob": "secrets/**", "recipients": ["security"], "label": "secret-material" }
+  ],
   "public": ["secrets/README.md"],
+  "recipients": {
+    "ops": { "kid": "age1ops-public-key" },
+    "security": { "kid": "age1security-public-key" }
+  },
+  "redact": [
+    {
+      "glob": "docs/**",
+      "patterns": [{ "pattern": "token=[A-Za-z0-9_-]+", "replacement": "token=[REDACTED]" }]
+    }
+  ],
   "default": "public"
 }

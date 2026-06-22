@@ -2,10 +2,29 @@ import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-export function compilePolicy(policy) {
-  const privateRules = policy.private || [];
-  const publicRules = policy.public || [];
-  return { privateRules, publicRules };
+function normalizeRule(rule) {
+  if (typeof rule === 'string') return { glob: rule };
+  if (rule && typeof rule === 'object' && typeof rule.glob === 'string') return { ...rule };
+  throw new TypeError(`Invalid policy rule: ${JSON.stringify(rule)}`);
+}
+
+export function compilePolicy(policy = {}) {
+  const privateRules = (policy.private || []).map(normalizeRule);
+  const publicRules = (policy.public || []).map(normalizeRule);
+  const defaultVisibility = policy.default || 'public';
+  const policyId = policy.id || stablePolicyId(policy);
+  return { privateRules, publicRules, defaultVisibility, policyId, recipients: policy.recipients || {} };
+}
+
+export function stablePolicyId(policy = {}) {
+  const canonical = JSON.stringify({
+    private: policy.private || [],
+    public: policy.public || [],
+    default: policy.default || 'public',
+    recipients: policy.recipients || {},
+    redact: policy.redact || []
+  });
+  return `policy:${crypto.createHash('sha256').update(canonical).digest('hex').slice(0, 12)}`;
 }
 
 export function globToRegExp(glob) {
@@ -16,12 +35,18 @@ export function globToRegExp(glob) {
   return new RegExp(`^${escaped}$`);
 }
 
-export function classifyPath(filePath, policy) {
+export function explainPath(filePath, policy) {
   const normalized = filePath.replace(/\\/g, '/').replace(/^\.\//, '');
-  const { privateRules, publicRules } = compilePolicy(policy);
-  if (publicRules.some(rule => globToRegExp(rule).test(normalized))) return 'public';
-  if (privateRules.some(rule => globToRegExp(rule).test(normalized))) return 'private';
-  return policy.default || 'public';
+  const { privateRules, publicRules, defaultVisibility, policyId } = compilePolicy(policy);
+  const publicRule = publicRules.find(rule => globToRegExp(rule.glob).test(normalized));
+  if (publicRule) return { visibility: 'public', path: normalized, policyId, matched: publicRule.glob, rule: publicRule };
+  const privateRule = privateRules.find(rule => globToRegExp(rule.glob).test(normalized));
+  if (privateRule) return { visibility: 'private', path: normalized, policyId, matched: privateRule.glob, rule: privateRule };
+  return { visibility: defaultVisibility, path: normalized, policyId, matched: null, rule: null };
+}
+
+export function classifyPath(filePath, policy) {
+  return explainPath(filePath, policy).visibility;
 }
 
 export function deriveKey(secret) {
@@ -48,13 +73,46 @@ export function decryptText(record, secret, aad = '') {
   return Buffer.concat([decipher.update(Buffer.from(record.data, 'base64')), decipher.final()]).toString('utf8');
 }
 
+export function accessMetadata(explanation, policy) {
+  const rule = explanation.rule || {};
+  const recipientIds = rule.recipients || policy.defaultRecipients || [];
+  return {
+    policyId: explanation.policyId,
+    rule: explanation.matched || 'default',
+    label: rule.label || (explanation.visibility === 'private' ? 'private' : 'public'),
+    recipients: recipientIds.map(id => ({ id, ...(policy.recipients?.[id] || {}) }))
+  };
+}
+
+export function redactText(content, redactions = []) {
+  return redactions.reduce((text, redaction) => {
+    const pattern = redaction.pattern instanceof RegExp ? redaction.pattern : new RegExp(redaction.pattern, redaction.flags || 'g');
+    return text.replace(pattern, redaction.replacement || '[REDACTED]');
+  }, content);
+}
+
+export function redactionsForPath(filePath, policy = {}) {
+  const normalized = filePath.replace(/\\/g, '/').replace(/^\.\//, '');
+  return (policy.redact || [])
+    .map(normalizeRule)
+    .filter(rule => globToRegExp(rule.glob).test(normalized))
+    .flatMap(rule => rule.patterns || []);
+}
+
 export function buildVaultManifest(files, policy, secret = 'demo-secret') {
   return files.map(file => {
-    const visibility = classifyPath(file.path, policy);
+    const explanation = explainPath(file.path, policy);
     const sha256 = crypto.createHash('sha256').update(file.content).digest('hex');
-    const base = { path: file.path, visibility, sha256 };
-    if (visibility === 'private') return { ...base, encrypted: encryptText(file.content, secret, file.path) };
-    return { ...base, content: file.content };
+    const base = {
+      path: file.path,
+      visibility: explanation.visibility,
+      sha256,
+      access: accessMetadata(explanation, policy)
+    };
+    if (explanation.visibility === 'private') return { ...base, encrypted: encryptText(file.content, secret, file.path) };
+    const redactions = redactionsForPath(file.path, policy);
+    const content = redactions.length ? redactText(file.content, redactions) : file.content;
+    return { ...base, content, redacted: redactions.length > 0 };
   });
 }
 
