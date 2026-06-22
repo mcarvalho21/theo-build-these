@@ -7,6 +7,8 @@ import {
   lifecycleScripts,
   parseArgs,
   parsePackageSpec,
+  previousPublishedVersion,
+  releaseDiff,
   renderReport,
   resolveVersion,
   scanTarballBytes,
@@ -41,6 +43,80 @@ test('lifecycleScripts extracts install-time hooks only', () => {
   });
 });
 
+test('releaseDiff identifies newly added lifecycle scripts from the previous published version', () => {
+  const metadata = {
+    name: 'fixture-tool',
+    time: {
+      '1.0.0': '2026-01-01T00:00:00.000Z',
+      '1.1.0': '2026-02-01T00:00:00.000Z',
+      '1.2.0': '2026-03-01T00:00:00.000Z'
+    },
+    versions: {
+      '1.0.0': { scripts: { postinstall: 'node old.js' } },
+      '1.1.0': { scripts: { postinstall: 'node old.js' } },
+      '1.2.0': { scripts: { postinstall: 'node old.js', prepare: 'tsc' } }
+    }
+  };
+
+  assert.equal(previousPublishedVersion(metadata, '1.2.0'), '1.1.0');
+  assert.deepEqual(releaseDiff(metadata, '1.2.0'), {
+    previousVersion: '1.1.0',
+    newLifecycleScripts: { prepare: 'tsc' },
+    removedLifecycleScripts: {},
+    changedLifecycleScripts: {}
+  });
+});
+
+test('releaseDiff falls back cleanly when no previous version exists', () => {
+  const metadata = { name: 'first-release', versions: { '1.0.0': { scripts: { postinstall: 'node x.js' } } } };
+  assert.deepEqual(releaseDiff(metadata, '1.0.0'), {
+    previousVersion: null,
+    newLifecycleScripts: {},
+    removedLifecycleScripts: {},
+    changedLifecycleScripts: {}
+  });
+});
+
+test('releaseDiff falls back to version ordering when target publish time is missing', () => {
+  const metadata = {
+    name: 'private-registry-tool',
+    time: {
+      '1.1.0': '2026-02-01T00:00:00.000Z',
+      '1.3.0': '2026-04-01T00:00:00.000Z'
+    },
+    versions: {
+      '1.1.0': { scripts: {} },
+      '1.2.0': { scripts: { postinstall: 'node x.js' } },
+      '1.3.0': { scripts: {} }
+    }
+  };
+
+  assert.equal(previousPublishedVersion(metadata, '1.2.0'), '1.1.0');
+});
+
+test('releaseDiff fallback treats prerelease as older than stable release', () => {
+  const metadata = {
+    name: 'semver-ish-tool',
+    versions: {
+      '1.0.0-alpha.1': { scripts: {} },
+      '1.0.0': { scripts: { prepare: 'tsc' } }
+    }
+  };
+
+  assert.equal(previousPublishedVersion(metadata, '1.0.0'), '1.0.0-alpha.1');
+  assert.deepEqual(releaseDiff(metadata, '1.0.0').newLifecycleScripts, { prepare: 'tsc' });
+});
+
+test('scorePackage raises risk for changed lifecycle scripts', () => {
+  const scored = scorePackage({
+    metadata: { maintainers: [{ name: 'alice' }] },
+    pkg: { name: 'fixture-tool', bin: { fixture: 'cli.js' }, scripts: { postinstall: 'node new.js' }, dependencies: {} },
+    releaseDiff: { previousVersion: '1.0.0', newLifecycleScripts: {}, changedLifecycleScripts: { postinstall: 'node new.js' } }
+  });
+
+  assert(scored.reasons.some(reason => reason.includes('changed lifecycle scripts')));
+});
+
 test('buildReport produces agent-readable package risk metadata', () => {
   const metadata = {
     name: 'is-0dd',
@@ -66,6 +142,40 @@ test('buildReport produces agent-readable package risk metadata', () => {
   assert.equal(report.risk.level, 'medium');
   assert.match(renderReport(report), /lifecycle scripts: postinstall/);
 });
+
+test('buildReport includes release-diff lifecycle script signal in JSON and human output', () => {
+  const metadata = {
+    name: 'sharp-edge',
+    maintainers: [{ name: 'alice' }],
+    time: {
+      '1.0.0': '2026-01-01T00:00:00.000Z',
+      '1.1.0': '2026-02-01T00:00:00.000Z'
+    },
+    versions: {
+      '1.0.0': { name: 'sharp-edge', version: '1.0.0', bin: { sharp: 'cli.js' }, scripts: {} },
+      '1.1.0': { name: 'sharp-edge', version: '1.1.0', bin: { sharp: 'cli.js' }, scripts: { postinstall: 'node postinstall.js' } }
+    }
+  };
+
+  const report = buildReport(metadata, '1.1.0', '1.1.0');
+  assert.equal(report.releaseDiff.previousVersion, '1.0.0');
+  assert.deepEqual(report.releaseDiff.newLifecycleScripts, { postinstall: 'node postinstall.js' });
+  assert(report.risk.reasons.some(reason => reason.includes('new lifecycle scripts since 1.0.0')));
+  assert.match(renderReport(report), /previous release: 1\.0\.0/);
+  assert.match(renderReport(report), /new lifecycle scripts: postinstall/);
+});
+
+test('scorePackage raises risk for newly added lifecycle scripts', () => {
+  const scored = scorePackage({
+    metadata: { maintainers: [{ name: 'alice' }] },
+    pkg: { name: 'fixture-tool', bin: { fixture: 'cli.js' }, scripts: { prepare: 'tsc' }, dependencies: {} },
+    releaseDiff: { previousVersion: '1.0.0', newLifecycleScripts: { prepare: 'tsc' } }
+  });
+
+  assert.equal(scored.level, 'medium');
+  assert(scored.reasons.some(reason => reason.includes('new lifecycle scripts')));
+});
+
 
 test('scorePackage flags missing bin for npx commands', () => {
   const scored = scorePackage({ metadata: { maintainers: [] }, pkg: { name: 'left-pad', dependencies: {} } });

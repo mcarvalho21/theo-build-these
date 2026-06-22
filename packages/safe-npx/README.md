@@ -19,6 +19,7 @@ Without `--dry-run`, it asks for an explicit package-name confirmation before ex
 ## Current risk signals
 
 - lifecycle scripts: `preinstall`, `install`, `postinstall`, `prepare`, etc.
+- newly added lifecycle scripts compared with the previous published version
 - missing executable `bin` for an NPX-style invocation
 - dependency surface size
 - missing maintainer metadata
@@ -40,6 +41,12 @@ Use `--json --dry-run` and have the agent inspect:
   "lifecycleScripts": {},
   "bins": [],
   "integrity": "sha512-...",
+  "releaseDiff": {
+    "previousVersion": "1.2.2",
+    "newLifecycleScripts": { "postinstall": "node postinstall.js" },
+    "removedLifecycleScripts": {},
+    "changedLifecycleScripts": {}
+  },
   "tarballScan": {
     "fileCount": 3,
     "unpackedSize": 51234,
@@ -59,8 +66,6 @@ A future Hermes/agent policy could block `risk.level === "high"`, ask the user o
 
 ## Next MVP steps
 
-- compare latest release diff against prior version
-- flag newly added install scripts
 - query Socket/OpenSSF/package provenance APIs when available
 - cache trust decisions per package+integrity, not just package name
 

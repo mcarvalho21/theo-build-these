@@ -70,13 +70,87 @@ export function lifecycleScripts(pkg) {
   return Object.fromEntries(Object.entries(scripts).filter(([name]) => risky.includes(name)));
 }
 
+function parseVersionish(version) {
+  const [withoutBuild] = version.replace(/^v/, '').split('+');
+  const [core, prerelease = ''] = withoutBuild.split('-', 2);
+  const coreParts = core.split('.').map(part => (/^\d+$/.test(part) ? Number(part) : part));
+  const prereleaseParts = prerelease ? prerelease.split('.').map(part => (/^\d+$/.test(part) ? Number(part) : part)) : [];
+  return { coreParts, prereleaseParts };
+}
+
+function compareIdentifier(a, b) {
+  if (a === b) return 0;
+  if (typeof a === 'number' && typeof b === 'number') return a - b;
+  if (typeof a === 'number') return -1;
+  if (typeof b === 'number') return 1;
+  return String(a).localeCompare(String(b));
+}
+
+function compareVersionish(a, b) {
+  const left = parseVersionish(a);
+  const right = parseVersionish(b);
+  const coreLength = Math.max(left.coreParts.length, right.coreParts.length, 3);
+  for (let index = 0; index < coreLength; index++) {
+    const compared = compareIdentifier(left.coreParts[index] ?? 0, right.coreParts[index] ?? 0);
+    if (compared !== 0) return compared;
+  }
+
+  if (!left.prereleaseParts.length && right.prereleaseParts.length) return 1;
+  if (left.prereleaseParts.length && !right.prereleaseParts.length) return -1;
+
+  const prereleaseLength = Math.max(left.prereleaseParts.length, right.prereleaseParts.length);
+  for (let index = 0; index < prereleaseLength; index++) {
+    if (left.prereleaseParts[index] == null) return -1;
+    if (right.prereleaseParts[index] == null) return 1;
+    const compared = compareIdentifier(left.prereleaseParts[index], right.prereleaseParts[index]);
+    if (compared !== 0) return compared;
+  }
+  return 0;
+}
+
+export function previousPublishedVersion(metadata, version) {
+  const versions = Object.keys(metadata.versions || {}).filter(candidate => candidate !== version);
+  if (!versions.length) return null;
+
+  const publishedAt = metadata.time?.[version] ? Date.parse(metadata.time[version]) : NaN;
+  if (Number.isFinite(publishedAt)) {
+    const byTime = versions
+      .map(candidate => ({ version: candidate, time: metadata.time?.[candidate] ? Date.parse(metadata.time[candidate]) : NaN }))
+      .filter(item => Number.isFinite(item.time) && item.time < publishedAt)
+      .sort((a, b) => b.time - a.time);
+    if (byTime.length) return byTime[0].version;
+  }
+
+  const beforeByVersion = versions
+    .filter(candidate => compareVersionish(candidate, version) < 0)
+    .sort((a, b) => compareVersionish(b, a));
+  return beforeByVersion[0] || null;
+}
+
+export function releaseDiff(metadata, version) {
+  const previousVersion = previousPublishedVersion(metadata, version);
+  if (!previousVersion) {
+    return { previousVersion: null, newLifecycleScripts: {}, removedLifecycleScripts: {}, changedLifecycleScripts: {} };
+  }
+
+  const current = lifecycleScripts(metadata.versions?.[version] || {});
+  const previous = lifecycleScripts(metadata.versions?.[previousVersion] || {});
+  const newLifecycleScripts = Object.fromEntries(Object.entries(current).filter(([name]) => !(name in previous)));
+  const removedLifecycleScripts = Object.fromEntries(Object.entries(previous).filter(([name]) => !(name in current)));
+  const changedLifecycleScripts = Object.fromEntries(
+    Object.entries(current).filter(([name, command]) => name in previous && previous[name] !== command)
+  );
+
+  return { previousVersion, newLifecycleScripts, removedLifecycleScripts, changedLifecycleScripts };
+}
+
 export function normalizeBin(bin) {
   if (!bin) return [];
   if (typeof bin === 'string') return [{ name: null, path: bin }];
   return Object.entries(bin).map(([name, path]) => ({ name, path }));
 }
 
-export function scorePackage({ metadata, pkg, tarballScan = null }) {
+export function scorePackage({ metadata, pkg, tarballScan = null, releaseDiff: diff = null }) {
   let score = 0;
   const reasons = [];
   const scripts = lifecycleScripts(pkg);
@@ -88,6 +162,16 @@ export function scorePackage({ metadata, pkg, tarballScan = null }) {
   if (Object.keys(scripts).length) {
     score += 35;
     reasons.push(`runs lifecycle scripts: ${Object.keys(scripts).join(', ')}`);
+  }
+  if (diff?.previousVersion && Object.keys(diff.newLifecycleScripts || {}).length) {
+    const names = Object.keys(diff.newLifecycleScripts);
+    score += Math.min(25, 15 + names.length * 5);
+    reasons.push(`new lifecycle scripts since ${diff.previousVersion}: ${names.join(', ')}`);
+  }
+  if (diff?.previousVersion && Object.keys(diff.changedLifecycleScripts || {}).length) {
+    const names = Object.keys(diff.changedLifecycleScripts);
+    score += Math.min(15, names.length * 8);
+    reasons.push(`changed lifecycle scripts since ${diff.previousVersion}: ${names.join(', ')}`);
   }
   if (!bins.length) {
     score += 20;
@@ -150,7 +234,8 @@ export function buildReport(metadata, version, requestedRange = version, options
   const dependencies = Object.keys(pkg.dependencies || {});
   const maintainers = (metadata.maintainers || []).map(m => m.name || m.email || String(m)).filter(Boolean);
   const tarballScan = options.tarballScan || null;
-  const risk = scorePackage({ metadata, pkg, tarballScan });
+  const diff = options.releaseDiff || releaseDiff(metadata, version);
+  const risk = scorePackage({ metadata, pkg, tarballScan, releaseDiff: diff });
 
   return {
     package: pkg.name || metadata.name,
@@ -167,6 +252,7 @@ export function buildReport(metadata, version, requestedRange = version, options
     bins,
     lifecycleScripts: scripts,
     dependencyCount: dependencies.length,
+    releaseDiff: diff,
     tarballScan,
     risk
   };
@@ -319,6 +405,17 @@ export function renderReport(report) {
   lines.push(`dependencies: ${report.dependencyCount}`);
   lines.push(`bins: ${report.bins.length ? report.bins.map(b => b.name ? `${b.name} -> ${b.path}` : b.path).join(', ') : 'none'}`);
   lines.push(`lifecycle scripts: ${Object.keys(report.lifecycleScripts).length ? Object.keys(report.lifecycleScripts).join(', ') : 'none'}`);
+  if (report.releaseDiff?.previousVersion) {
+    const added = Object.keys(report.releaseDiff.newLifecycleScripts || {});
+    const changed = Object.keys(report.releaseDiff.changedLifecycleScripts || {});
+    const removed = Object.keys(report.releaseDiff.removedLifecycleScripts || {});
+    lines.push(`previous release: ${report.releaseDiff.previousVersion}`);
+    lines.push(`new lifecycle scripts: ${added.length ? added.join(', ') : 'none'}`);
+    if (changed.length) lines.push(`changed lifecycle scripts: ${changed.join(', ')}`);
+    if (removed.length) lines.push(`removed lifecycle scripts: ${removed.join(', ')}`);
+  } else {
+    lines.push('previous release: none detected');
+  }
   if (report.tarballScan) {
     lines.push(`tarball scan: ${report.tarballScan.fileCount} files, ${formatBytes(report.tarballScan.unpackedSize)} unpacked`);
     if (report.tarballScan.suspiciousFiles.length) {
