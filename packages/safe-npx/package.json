@@ -1,0 +1,16 @@
+{
+  "name": "@build-these/safe-npx",
+  "version": "0.1.0",
+  "description": "Safer NPX preflight reports for humans and coding agents.",
+  "type": "module",
+  "bin": {
+    "safe-npx": "./bin/safe-npx.js"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}

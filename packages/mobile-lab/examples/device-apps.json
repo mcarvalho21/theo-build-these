@@ -1,0 +1,8 @@
+{
+  "device": { "name": "Pixel dev phone", "unlockableBootloader": true, "fastboot": true, "kernelSource": true, "ramGb": 8 },
+  "apps": [
+    { "name": "F-Droid", "requires": ["android-runtime"] },
+    { "name": "Maps", "requires": ["android-runtime", "google-play-services"] },
+    { "name": "Bank", "requires": ["android-runtime", "banking-attestation"] }
+  ]
+}

@@ -1,0 +1,5 @@
+{
+  "private": [".env*", "secrets/**"],
+  "public": ["secrets/README.md"],
+  "default": "public"
+}

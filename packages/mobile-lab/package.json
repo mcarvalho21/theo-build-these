@@ -1,0 +1,10 @@
+{
+  "name": "@build-these/mobile-lab",
+  "version": "0.1.0",
+  "description": "Experimental Android-compatible mobile platform planning toolkit.",
+  "type": "module",
+  "bin": { "mobile-lab": "./bin/mobile-lab.js" },
+  "scripts": { "test": "node --test" },
+  "engines": { "node": ">=20" },
+  "license": "MIT"
+}

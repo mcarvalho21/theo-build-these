@@ -1,0 +1,10 @@
+{
+  "name": "@build-these/source-vault",
+  "version": "0.1.0",
+  "description": "Git-adjacent private path policy and encryption prototype.",
+  "type": "module",
+  "bin": { "source-vault": "./bin/source-vault.js" },
+  "scripts": { "test": "node --test" },
+  "engines": { "node": ">=20" },
+  "license": "MIT"
+}

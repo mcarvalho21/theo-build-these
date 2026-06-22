@@ -1,0 +1,20 @@
+{
+  "name": "theo-build-these",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Prototypes inspired by Theo's 'I don't have time to build these things' video.",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "test": "npm --workspaces test",
+    "demo:safe-npx": "node packages/safe-npx/bin/safe-npx.js is-odd --dry-run",
+    "demo:weird-bench": "node packages/weird-bench/bin/weird-bench.js packages/weird-bench/fixtures/reverse-string -- node -e \"process.stdin.resume(); process.stdin.on('end', () => console.log('.reggib sdliub xileF'))\"",
+    "demo:source-vault": "node packages/source-vault/bin/source-vault.js packages/source-vault/examples/repo packages/source-vault/examples/vault.policy.json",
+    "demo:dev-sync": "node packages/dev-sync/bin/dev-sync.js packages/dev-sync/examples/local packages/dev-sync/examples/remote-manifest.json",
+    "demo:mobile-lab": "node packages/mobile-lab/bin/mobile-lab.js packages/mobile-lab/examples/device-apps.json",
+    "demo:agent-workspace": "node packages/agent-workspace/bin/agent-workspace.js \"Felix Workbench\"",
+    "demo:all": "npm run demo:safe-npx && npm run demo:source-vault && npm run demo:dev-sync && npm run demo:mobile-lab && npm run demo:agent-workspace && npm run demo:weird-bench"
+  },
+  "license": "MIT"
+}

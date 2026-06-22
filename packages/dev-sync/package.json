@@ -1,0 +1,10 @@
+{
+  "name": "@build-these/dev-sync",
+  "version": "0.1.0",
+  "description": "Dropbox-for-dev structure sync and lazy hydration planner.",
+  "type": "module",
+  "bin": { "dev-sync": "./bin/dev-sync.js" },
+  "scripts": { "test": "node --test" },
+  "engines": { "node": ">=20" },
+  "license": "MIT"
+}

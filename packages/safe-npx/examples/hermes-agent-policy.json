@@ -1,0 +1,7 @@
+{
+  "maxRisk": "low",
+  "requireBin": true,
+  "denyLifecycleScripts": true,
+  "requirePinnedVersion": true,
+  "denyPackages": []
+}

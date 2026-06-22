@@ -1,0 +1,16 @@
+{
+  "name": "@build-these/weird-bench",
+  "version": "0.1.0",
+  "description": "Tiny fixture runner for turning failed agent tasks into reproducible benchmarks.",
+  "type": "module",
+  "bin": {
+    "weird-bench": "./bin/weird-bench.js"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}

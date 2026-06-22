@@ -1,0 +1,6 @@
+{
+  "name": "reverse-string-smoke",
+  "promptFile": "prompt.md",
+  "expectedFile": "expected.txt",
+  "scorer": "exact-trimmed"
+}

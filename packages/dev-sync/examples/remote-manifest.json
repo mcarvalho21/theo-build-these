@@ -1,0 +1,5 @@
+[
+  { "type": "dir", "path": "src" },
+  { "type": "file", "path": "src/app.js", "size": 19, "sha256": "remote-new-hash" },
+  { "type": "file", "path": "README.md", "size": 12, "sha256": "readme-hash" }
+]
