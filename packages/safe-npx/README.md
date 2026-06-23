@@ -11,6 +11,8 @@ It does **not** claim to prove a package is safe. It makes the install/execute d
 ```bash
 safe-npx create-vite@latest --dry-run
 safe-npx create-vite@latest --json --dry-run
+safe-npx create-vite@9.0.7 --agent-strict --dry-run --json
+safe-npx-corpus
 safe-npx create-vite@latest -- --template react
 ```
 
@@ -58,7 +60,17 @@ Use `--json --dry-run` and have the agent inspect:
 }
 ```
 
-A future Hermes/agent policy could block `risk.level === "high"`, ask the user on `medium`, and allow `low` only for pinned versions.
+For agent use, `--agent-strict` applies the default block-first policy: low max risk, pinned version, executable bin, and no lifecycle scripts.
+
+## Risk corpus
+
+`safe-npx-corpus` runs an offline fixture corpus of known-bad package shapes, clean-benign package shapes, and benign-but-frictional real-world shapes. It prints catch rate and false-positive rate so scoring changes are measurable instead of vibes-only.
+
+```bash
+npm run eval:corpus
+```
+
+Current fixture target: catch every known-bad shape, preserve zero false positives on clean-benign fixtures, and make strict-policy friction visible instead of pretending it does not exist.
 
 ## Tarball scan
 
@@ -85,7 +97,11 @@ Recommended agent defaults:
   "maxRisk": "low",
   "requireBin": true,
   "denyLifecycleScripts": true,
-  "requirePinnedVersion": true
+  "requirePinnedVersion": true,
+  "requireMaintainers": true,
+  "denyTarballFindings": true,
+  "maxDependencyCount": 25,
+  "maxUnpackedSize": 50000000
 }
 ```
 

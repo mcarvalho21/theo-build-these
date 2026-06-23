@@ -21,4 +21,4 @@ npm run demo:all
 | Agent-native Slack replacement | `@build-these/agent-workspace` | ✅ MVP | Post-first workspace core with nested replies and agent task branches |
 | Weird benchmarks | `@build-these/weird-bench` | ✅ MVP | Turn failed agent tasks into reproducible benchmark fixtures |
 
-See [`docs/ideas.md`](docs/ideas.md) for the extracted backlog and product notes, [`docs/roadmap.md`](docs/roadmap.md) for collaboration priorities, [`docs/next-steps.md`](docs/next-steps.md) for the current implementation sequence, and [`CONTRIBUTING.md`](CONTRIBUTING.md) for contribution guidelines.
+See [`docs/ideas.md`](docs/ideas.md) for the extracted backlog and product notes, [`docs/roadmap.md`](docs/roadmap.md) for collaboration priorities, [`docs/next-steps.md`](docs/next-steps.md) for the current implementation sequence, [`docs/theo-grade-build-plan.md`](docs/theo-grade-build-plan.md) for the research-backed product plan, and [`CONTRIBUTING.md`](CONTRIBUTING.md) for contribution guidelines.

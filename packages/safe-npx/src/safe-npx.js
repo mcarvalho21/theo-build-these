@@ -6,6 +6,7 @@ export function parseArgs(argv) {
     registry: 'https://registry.npmjs.org',
     policyPath: null,
     maxRisk: null,
+    agentStrict: false,
     packageSpec: null,
     passthrough: []
   };
@@ -19,6 +20,7 @@ export function parseArgs(argv) {
     else if (arg === '--registry') opts.registry = args.shift();
     else if (arg === '--policy') opts.policyPath = args.shift();
     else if (arg === '--max-risk') opts.maxRisk = args.shift();
+    else if (arg === '--agent-strict') opts.agentStrict = true;
     else if (arg === '--') {
       opts.passthrough = args;
       break;
@@ -26,7 +28,7 @@ export function parseArgs(argv) {
     else opts.passthrough.push(arg, ...args.splice(0));
   }
 
-  if (!opts.packageSpec) throw new Error('Usage: safe-npx <package[@version]> [-- --package-args] [--json] [--dry-run] [--yes]');
+  if (!opts.packageSpec) throw new Error('Usage: safe-npx <package[@version]> [-- --package-args] [--json] [--dry-run] [--yes] [--agent-strict]');
   return opts;
 }
 
@@ -354,6 +356,17 @@ export function formatBytes(bytes) {
 }
 
 
+export const AGENT_STRICT_POLICY = {
+  maxRisk: 'low',
+  requireBin: true,
+  denyLifecycleScripts: true,
+  requirePinnedVersion: true,
+  requireMaintainers: true,
+  denyTarballFindings: true,
+  maxDependencyCount: 25,
+  maxUnpackedSize: 50_000_000
+};
+
 export function evaluatePolicy(report, policy = {}) {
   const maxRisk = policy.maxRisk || 'medium';
   const order = { low: 1, medium: 2, high: 3 };
@@ -373,6 +386,22 @@ export function evaluatePolicy(report, policy = {}) {
 
   if (policy.requirePinnedVersion && /latest|\*|\^|~|>|</.test(report.requestedRange || '')) {
     reasons.push('unpinned package range denied by policy');
+  }
+
+  if (policy.requireMaintainers === true && report.maintainers.length === 0) {
+    reasons.push('missing maintainer metadata denied by policy');
+  }
+
+  if (policy.denyTarballFindings === true && report.tarballScan?.suspiciousFiles?.length > 0) {
+    reasons.push(`tarball findings denied: ${report.tarballScan.suspiciousFiles.length} suspicious files`);
+  }
+
+  if (Number.isFinite(policy.maxDependencyCount) && report.dependencyCount > policy.maxDependencyCount) {
+    reasons.push(`dependency count ${report.dependencyCount} exceeds allowed ${policy.maxDependencyCount}`);
+  }
+
+  if (Number.isFinite(policy.maxUnpackedSize) && Number.isFinite(report.unpackedSize) && report.unpackedSize > policy.maxUnpackedSize) {
+    reasons.push(`unpacked size ${formatBytes(report.unpackedSize)} exceeds allowed ${formatBytes(policy.maxUnpackedSize)}`);
   }
 
   const allowedPackages = policy.allowPackages || [];

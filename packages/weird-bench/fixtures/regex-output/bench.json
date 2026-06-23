@@ -1,0 +1,10 @@
+{
+  "name": "regex-output-smoke",
+  "promptFile": "prompt.md",
+  "expectedFile": "expected.txt",
+  "scorer": "regex",
+  "patterns": [
+    "status:\\s*ok",
+    "files:\\s*\\d+"
+  ]
+}

@@ -36,6 +36,19 @@ Supported scorers in the MVP:
 
 - `exact-trimmed`
 - `contains-all` with `mustContain: ["token"]`
+- `regex` with `patterns: ["status:\\s*ok"]` and optional `regexFlags` (defaults to `m`, so `^`/`$` match line boundaries)
+
+Example regex fixture:
+
+```json
+{
+  "name": "status-smoke",
+  "promptFile": "prompt.md",
+  "expectedFile": "expected.txt",
+  "scorer": "regex",
+  "patterns": ["status:\\s*ok", "files:\\s*\\d+"]
+}
+```
 
 ## Why this exists
 

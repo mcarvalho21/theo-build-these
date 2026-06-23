@@ -4,10 +4,12 @@
   "description": "Safer NPX preflight reports for humans and coding agents.",
   "type": "module",
   "bin": {
-    "safe-npx": "./bin/safe-npx.js"
+    "safe-npx": "./bin/safe-npx.js",
+    "safe-npx-corpus": "./bin/safe-npx-corpus.js"
   },
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "eval:corpus": "node ./bin/safe-npx-corpus.js"
   },
   "files": [
     "bin/",

@@ -15,6 +15,7 @@ import {
   scorePackage,
   evaluatePolicy
 } from '../src/safe-npx.js';
+import { evaluateRiskCorpus } from '../src/risk-corpus.js';
 
 test('parsePackageSpec handles unscoped, versions, and scoped packages', () => {
   assert.deepEqual(parsePackageSpec('vite'), { name: 'vite', range: 'latest' });
@@ -31,9 +32,14 @@ test('parseArgs separates safe-npx flags from package passthrough args', () => {
     registry: 'https://registry.npmjs.org',
     policyPath: null,
     maxRisk: null,
+    agentStrict: false,
     packageSpec: 'pkg@latest',
     passthrough: ['--help']
   });
+});
+
+test('parseArgs supports agent-strict policy preset', () => {
+  assert.equal(parseArgs(['pkg@1.0.0', '--agent-strict']).agentStrict, true);
 });
 
 test('lifecycleScripts extracts install-time hooks only', () => {
@@ -278,4 +284,16 @@ test('tarball scan findings increase package risk and render in reports', () => 
   assert(report.risk.reasons.some(reason => reason.includes('large JavaScript files')));
   assert.match(renderReport(report), /tarball scan: 2 files/);
   assert.match(renderReport(report), /large JavaScript file: dist\/bundle\.js/);
+});
+
+
+test('risk corpus reports catch rate and false-positive rate for agent-strict policy', () => {
+  const evaluation = evaluateRiskCorpus();
+  assert.equal(evaluation.summary.missed, 0);
+  assert.equal(evaluation.summary.cleanFalsePositives, 0);
+  assert(evaluation.summary.falsePositives > 0);
+  assert.equal(evaluation.summary.catchRate, 1);
+  assert.equal(evaluation.summary.cleanFalsePositiveRate, 0);
+  assert(evaluation.summary.frictionFalsePositiveRate > 0);
+  assert(evaluation.results.some(result => result.name === 'new-postinstall-hook' && result.actual === 'block'));
 });

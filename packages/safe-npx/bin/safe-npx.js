@@ -10,6 +10,7 @@ import {
   parsePackageSpec,
   renderReport,
   renderPolicyDecision,
+  AGENT_STRICT_POLICY,
   evaluatePolicy,
   resolveVersion,
   scanTarballBytes
@@ -23,7 +24,11 @@ async function main() {
   const pkg = metadata.versions?.[version];
   const tarballScan = pkg?.dist?.tarball ? await scanTarballBytes(await fetchTarballBytes(pkg.dist.tarball)) : null;
   const report = buildReport(metadata, version, range, { tarballScan });
-  const policy = opts.policyPath ? JSON.parse(await (await import('node:fs/promises')).readFile(opts.policyPath, 'utf8')) : {};
+  const policy = opts.agentStrict
+    ? { ...AGENT_STRICT_POLICY }
+    : opts.policyPath
+      ? JSON.parse(await (await import('node:fs/promises')).readFile(opts.policyPath, 'utf8'))
+      : {};
   if (opts.maxRisk) policy.maxRisk = opts.maxRisk;
   const decision = evaluatePolicy(report, policy);
 

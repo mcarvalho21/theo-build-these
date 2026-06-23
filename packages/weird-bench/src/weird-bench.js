@@ -26,6 +26,19 @@ export function scoreOutput(output, fixture) {
     return { pass: missing.length === 0, score: missing.length === 0 ? 1 : 0, mode, notes: missing.map(token => `missing: ${token}`) };
   }
 
+  if (mode === 'regex') {
+    const patterns = fixture.manifest.patterns;
+    if (!Array.isArray(patterns) || patterns.length === 0 || patterns.some(pattern => typeof pattern !== 'string')) {
+      throw new Error('regex scorer requires a non-empty string patterns array');
+    }
+    const missing = [];
+    for (const pattern of patterns) {
+      const re = new RegExp(pattern, fixture.manifest.regexFlags || 'm');
+      if (!re.test(actual)) missing.push(pattern);
+    }
+    return { pass: missing.length === 0, score: missing.length === 0 ? 1 : 0, mode, notes: missing.map(pattern => `missing pattern: ${pattern}`) };
+  }
+
   throw new Error(`Unknown scorer: ${mode}`);
 }
 
