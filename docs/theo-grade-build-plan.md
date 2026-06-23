@@ -1,6 +1,6 @@
 # Theo-grade build plan: make the six prototypes undeniably useful
 
-Last updated: 2026-06-23
+Last updated: 2026-06-22
 
 Source idea video: https://www.youtube.com/watch?v=wEAb0x3wTRc
 
@@ -20,12 +20,14 @@ Build six small tools that feel like a Theo challenge answer, not a startup pitc
 |---:|---|---|---|
 | 1 | `safe-npx` | Remote package execution is the scariest daily agent/dev footgun. | A real agent package-execution gate with policy presets, provenance/trust signals, cache, and shell integration. |
 | 2 | `weird-bench` | Everyone complains benchmarks miss real agent failures. | A fixture runner that turns failures into tiny reproducible evals with useful scorers and model run summaries. |
-| 3 | `dev-sync` | Multi-machine dev + agents drift constantly. | A safe sync planner that explains exactly what it would hydrate/refresh/delete before touching disk. |
-| 4 | `source-vault` | Git does not handle private/public partial sharing elegantly. | A policy validator + manifest builder that can safely share a redacted/encrypted repo view. |
-| 5 | `agent-workspace` | Slack/Discord are chat logs, not agent work surfaces. | Local API around posts, nested replies, and agent task branches; bridge-ready core. |
-| 6 | `mobile-lab` | Mobile platform experiments are high-risk and setup-heavy. | A safety-first planner/checklist for emulator/device experiments, not a reckless flashing tool. |
+| 3 | `source-vault` | Git does not handle private/public partial sharing elegantly. | A policy validator + manifest builder that can safely share a redacted/encrypted repo view. |
+| 4 | `dev-sync` | Multi-machine dev + agents drift constantly. | A safe sync planner that explains exactly what it would hydrate/refresh/delete before touching disk. |
+| 5 | `mobile-lab` | Mobile platform experiments are high-risk and setup-heavy. | A safety-first planner/checklist for emulator/device experiments, not a reckless flashing tool. |
+| 6 | `agent-workspace` | Slack/Discord are chat logs, not agent work surfaces. | Local API around posts, nested replies, and agent task branches; bridge-ready core. |
 
 ## Competitor and pain-point research
+
+See [`docs/competitor-research.md`](competitor-research.md) for the fuller parallel research brief across safe-npx, source-vault, dev-sync, mobile-lab, agent-workspace, and weird-bench. This section is the product-plan distillation.
 
 ### 1. `safe-npx` — safer package execution for humans and agents
 
